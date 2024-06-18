@@ -4,6 +4,37 @@ from tkinter import messagebox
 #Password Generator
 #-----------------------#
 #Save Password
+def save_pass():
+    okcancel = messagebox.askokcancel(title=website_entry.get(),
+                                      message=f"The details you've entered are as follows:\n"
+                                              f"Email: {email_entry.get()}\n"
+                                              f"Password: {password_entry.get()}")
+    to_write = f"{website_entry.get()} | {email_entry.get()} | {password_entry.get()}"
+    src = open('data.json', 'r')
+    line = src.readlines()
+    is_empty = False
+    if len(website_entry.get()) == 0 or len(password_entry.get()) == 0:
+        is_empty = True
+    is_dup = False
+    for i in line:
+        if i[:len(i) - 1] == to_write:
+            is_dup = True
+    src.close()
+    if not is_dup and okcancel and not is_empty:
+        with open('data.txt', 'a') as data:
+            data.write(f"{to_write}")
+            data.write("\n")
+        messagebox.showinfo("Password Saved", "Password Saved Successfully!")
+    elif not okcancel:
+        messagebox.showinfo("Save Cancelled.", "Password Save Cancelled!")
+    elif is_dup:
+        print("Password already saved!")
+        messagebox.showinfo("Error: Saved!", "Password already saved!")
+    elif is_empty:
+        messagebox.showinfo("Error: Empty Submission", "Do not leave the fields empty!")
+    website_entry.delete(0, END)
+    password_entry.delete(0, END)
+    website_entry.focus()
 #-----------------------#
 #UI Setup
 window = Tk()
