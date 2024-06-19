@@ -5,6 +5,25 @@ from cryptography.fernet import Fernet
 import random
 import pyperclip
 
+
+#Load previously generated key
+#------------------------#
+def load_key():
+    return open("../Data/secret.key", "rb").read()
+
+
+key = load_key()
+fernet = Fernet(key)
+
+
+def encrypt_message(message):
+    return fernet.encrypt(message.encode()).decode()
+
+
+def decrypt_message(encrypted_message):
+    return fernet.decrypt(encrypted_message.encode()).decode()
+
+
 #Password Generator
 #-----------------------#
 def password_generate():
@@ -19,7 +38,6 @@ def password_generate():
     nr_symbols = 4
     nr_numbers = 5
 
-
     lettersInPass = ([random.choice(letters) for i in range(nr_letters)]
                      + [random.choice(symbols) for i in range(nr_symbols)]
                      + [random.choice(numbers) for i in range(nr_numbers)])
@@ -31,12 +49,17 @@ def password_generate():
     password_entry.insert(END, randomPass)
 
     pyperclip.copy(randomPass)
+
+
 #Save Password
 def save_pass():
+    password = password_entry.get()
+
+    encrypted_password = encrypt_message(password)
     new_data = {
         website_entry.get(): {
             "email": email_entry.get(),
-            "password": password_entry.get(),
+            "password": encrypted_password,
         }
     }
     okcancel = messagebox.askokcancel(title=website_entry.get(),
@@ -44,22 +67,36 @@ def save_pass():
                                               f"Email: {email_entry.get()}\n"
                                               f"Password: {password_entry.get()}")
     to_write = f"{website_entry.get()} | {email_entry.get()} | {password_entry.get()}"
+
+    if not okcancel:
+        return
+
     if len(website_entry.get()) == 0 and len(password_entry.get()) == 0:
         messagebox.showinfo(title="Error: Empty Field!", message="Do not leave the fields empty!")
     else:
-        with open('data.json', 'r') as data:
-            #Reading old data
-            data_file = json.load(data)
-            #Updating old data
-            data_file.update(new_data)
+        try:
+            with open("data.json", "r") as data_file:
+                try:
+                    # Reading old data
+                    data = json.load(data_file)
+                except json.JSONDecodeError:
+                    data = {}
+        except FileNotFoundError:
+            with open("data.json", "w") as data_file:
+                json.dump(new_data, data_file, indent=4)
+        else:
+            # Updating old data with new data
+            data.update(new_data)
 
-        with open('data.json', 'w') as data:
-            #Writing old data
-            json.dump(data_file, data, indent=4)
+            with open("data.json", "w") as data_file:
+                # Saving updated data
+                json.dump(data, data_file, indent=4)
+        finally:
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
+            website_entry.focus()
 
-    website_entry.delete(0, END)
-    password_entry.delete(0, END)
-    website_entry.focus()
+
 # ---------------------------- FIND PASSWORD ------------------------------- #
 def find_password():
     website = website_entry.get()
@@ -71,10 +108,13 @@ def find_password():
     else:
         if website in data:
             email = data[website]["email"]
-            password = data[website]["password"]
+            encrypted_password = data[website]["password"]
+            password = decrypt_message(encrypted_password)
             messagebox.showinfo(title=website, message=f"Email: {email}\nPassword: {password}")
         else:
             messagebox.showinfo(title="Error", message=f"No details for {website} exists.")
+
+
 #-----------------------#
 #UI Setup
 window = Tk()
@@ -98,23 +138,26 @@ password_label = Label(text="Password: ", bg="white")
 password_label.grid(row=3, column=0)
 
 #Entries
-website_entry = Entry(width=40)
+website_entry = Entry(width=21)
 website_entry.focus()
-website_entry.grid(row=1, column=1, columnspan=2)
+website_entry.grid(row=1, column=1)
 
-email_entry = Entry(width=40)
+email_entry = Entry(width=39)
 email_entry.insert(0, "varuntheace@gmail.com")
 email_entry.grid(row=2, column=1, columnspan=2)
 
-password_entry = Entry(width=40)
-password_entry.grid(row=3, column=1, columnspan=2)
+password_entry = Entry(width=21)
+password_entry.grid(row=3, column=1)
 
 #Buttons
+search_button = Button(text="Search", width=13, command=find_password)
+search_button.grid(row=1, column=2)
+
 generate_password = Button(text="Generate Password", width=14, command=password_generate)
 generate_password.grid(row=3, column=2)
 
 add_password_button = Button(text="Add", command=save_pass)
-add_password_button.config(width=34)
+add_password_button.config(width=33)
 add_password_button.grid(row=4, column=1, columnspan=2)
 
 window.mainloop()
